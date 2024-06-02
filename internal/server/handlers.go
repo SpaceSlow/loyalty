@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/SpaceSlow/loyalty/internal/model"
 	"net/http"
 	"time"
 
+	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/SpaceSlow/loyalty/internal/store"
 )
 
@@ -38,10 +38,6 @@ func (h *Handlers) RegisterUser(ctx context.Context, res http.ResponseWriter, re
 	defer cancel()
 	exist, err := h.store.CheckUsername(timeoutCtx, user.Username)
 
-	if timeoutCtx.Err() != nil {
-		http.Error(res, errors.New("timeout exceeded").Error(), http.StatusInternalServerError)
-		return
-	}
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -52,9 +48,58 @@ func (h *Handlers) RegisterUser(ctx context.Context, res http.ResponseWriter, re
 		return
 	}
 
-	//TODO register and return OK-200
+	if user.GenerateHash() != nil {
+		http.Error(res, errors.New("error occured when generating password").Error(), http.StatusInternalServerError)
+		return
+	}
+
+	timeoutCtx, cancel = context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	err = h.store.CreateUser(timeoutCtx, user)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
 }
 
-func (h *Handlers) LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) LoginUser(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	user := &model.User{}
+	if err := json.NewDecoder(req.Body).Decode(user); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := req.Body.Close(); err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	passwordHash, err := h.store.GetPasswordHash(timeoutCtx, user.Username)
+	var errNoUser *store.ErrNoUser
+	if errors.As(err, &errNoUser) {
+		res.WriteHeader(http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	check, err := user.CheckPassword(passwordHash)
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !check {
+		res.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	//TODO возврат jwt-токена клиенту
+	res.WriteHeader(http.StatusOK)
 }

@@ -5,11 +5,12 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/SpaceSlow/loyalty/internal/model"
 
+	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -65,8 +66,33 @@ func (db *DB) CheckUsername(ctx context.Context, username string) (bool, error) 
 }
 
 func (db *DB) CreateUser(ctx context.Context, u *model.User) error {
-	// TODO create user in db
+	_, err := db.pool.Exec(
+		ctx,
+		`INSERT INTO users (username, password_hash) VALUES ($1, $2)`,
+		u.Username, u.PasswordHash,
+	)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (db *DB) GetPasswordHash(ctx context.Context, username string) (string, error) {
+	row := db.pool.QueryRow(
+		ctx,
+		"SELECT password_hash FROM users WHERE username=$1",
+		username,
+	)
+
+	var hash string
+	err := row.Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", &ErrNoUser{username: username}
+	} else if err != nil {
+		return "", err
+	}
+	return hash, nil
 }
 
 func (db *DB) Close() {
