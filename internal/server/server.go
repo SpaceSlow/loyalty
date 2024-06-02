@@ -1,18 +1,19 @@
 package server
 
 import (
-	"github.com/SpaceSlow/loyalty/internal/store"
 	"net/http"
 
 	"github.com/SpaceSlow/loyalty/internal/config"
+	"github.com/SpaceSlow/loyalty/internal/store"
 )
 
 func RunServer() error {
-	cfg, err := config.GetConfigWithFlags()
+	var err error
+	config.ServerConfig, err = config.GetConfigWithFlags()
 	if err != nil {
 		return err
 	}
-	db, err := store.NewDB(cfg.DSN)
+	db, err := store.NewDB(config.ServerConfig.DSN)
 	if err != nil {
 		return err
 	}

@@ -95,6 +95,23 @@ func (db *DB) GetPasswordHash(ctx context.Context, username string) (string, err
 	return hash, nil
 }
 
+func (db *DB) GetUserID(ctx context.Context, username string) (int, error) {
+	row := db.pool.QueryRow(
+		ctx,
+		"SELECT id FROM users WHERE username=$1",
+		username,
+	)
+
+	var userID int
+	err := row.Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return -1, &ErrNoUser{username: username}
+	} else if err != nil {
+		return -1, err
+	}
+	return userID, nil
+}
+
 func (db *DB) Close() {
 	db.pool.Close()
 }
