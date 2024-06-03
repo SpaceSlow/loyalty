@@ -7,32 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SpaceSlow/loyalty/internal/config"
+	"github.com/SpaceSlow/loyalty/internal/middleware"
 	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/SpaceSlow/loyalty/internal/store"
-	"github.com/golang-jwt/jwt/v4"
 )
-
-type Claims struct {
-	jwt.RegisteredClaims
-	UserID int
-}
-
-func BuildJWTString(userID int) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.ServerConfig.TokenExpiredAt)),
-		},
-		UserID: userID,
-	})
-
-	tokenString, err := token.SignedString([]byte(config.ServerConfig.SecretKey))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
-}
 
 type Handlers struct {
 	store   *store.DB
@@ -133,7 +111,7 @@ func (h *Handlers) LoginUser(ctx context.Context, res http.ResponseWriter, req *
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	token, err := BuildJWTString(userID)
+	token, err := middleware.BuildJWTString(userID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

@@ -1,9 +1,10 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/SpaceSlow/loyalty/internal/store"
 	"github.com/go-chi/chi/v5"
-	"net/http"
 )
 
 func Router(storage *store.DB) chi.Router {

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/SpaceSlow/loyalty/internal/server"
 	"log"
+
+	"github.com/SpaceSlow/loyalty/internal/server"
 )
 
 func main() {
