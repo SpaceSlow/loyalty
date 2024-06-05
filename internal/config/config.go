@@ -10,10 +10,11 @@ import (
 var ServerConfig *Config
 
 type Config struct {
-	DSN               string `env:"DATABASE_URI"`
-	SecretKey         string `env:"SECRET_KEY"`
-	PasswordIteration int
-	TokenExpiredAt    time.Duration
+	DSN                   string `env:"DATABASE_URI"`
+	SecretKey             string `env:"SECRET_KEY"`
+	PasswordIteration     int
+	TokenExpiredAt        time.Duration
+	TimeoutServerShutdown time.Duration
 }
 
 func GetConfigWithFlags() (*Config, error) {
@@ -37,6 +38,7 @@ func GetConfigWithFlags() (*Config, error) {
 
 	cfg.PasswordIteration = 500000
 	cfg.TokenExpiredAt = time.Hour
+	cfg.TimeoutServerShutdown = 10 * time.Second
 
 	return cfg, nil
 }
