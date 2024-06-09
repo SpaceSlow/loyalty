@@ -65,17 +65,13 @@ func (db *DB) CheckUsername(ctx context.Context, username string) (bool, error) 
 	return existUsername, nil
 }
 
-func (db *DB) CreateUser(ctx context.Context, u *model.User) error {
+func (db *DB) RegisterUser(ctx context.Context, u *model.User) error {
 	_, err := db.pool.Exec(
 		ctx,
 		`INSERT INTO users (username, password_hash) VALUES ($1, $2)`,
 		u.Username, u.PasswordHash,
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (db *DB) GetPasswordHash(ctx context.Context, username string) (string, error) {
@@ -110,6 +106,27 @@ func (db *DB) GetUserID(ctx context.Context, username string) (int, error) {
 		return -1, err
 	}
 	return userID, nil
+}
+
+func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber int) error {
+	row := db.pool.QueryRow(
+		ctx,
+		"SELECT user_id FROM loyalty_operations WHERE order_number=$1",
+		orderNumber,
+	)
+
+	var storedUserID int
+	err := row.Scan(&storedUserID)
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return &ErrOrderAlreadyExist{UserID: storedUserID}
+	}
+
+	_, err = db.pool.Exec(
+		ctx,
+		`INSERT INTO loyalty_operations (user_id, order_number) VALUES ($1, $2)`,
+		userID, orderNumber,
+	)
+	return err
 }
 
 func (db *DB) Close() {

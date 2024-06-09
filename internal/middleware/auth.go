@@ -52,8 +52,20 @@ func getUserID(tokenString string) (int, error) {
 	return claims.UserID, nil
 }
 
-func WithAuthorization(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+type contextUserID string
+
+const ContextUserIDKey = contextUserID("userID")
+
+func setUserID(ctx *context.Context, userID int) {
+	*ctx = context.WithValue(*ctx, ContextUserIDKey, userID)
+}
+
+func GetUserID(ctx context.Context) int {
+	return ctx.Value(ContextUserIDKey).(int)
+}
+
+func WithAuthentication(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -67,8 +79,9 @@ func WithAuthorization(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "userID", userID)
+		ctx := r.Context()
+		setUserID(&ctx, userID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	}
 }
