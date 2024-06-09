@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SpaceSlow/loyalty/internal/config"
 	"github.com/SpaceSlow/loyalty/internal/middleware"
 	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/SpaceSlow/loyalty/internal/store"
@@ -20,7 +21,7 @@ type Handlers struct {
 func NewHandlers(s *store.DB) *Handlers {
 	return &Handlers{
 		store:   s,
-		timeout: 3 * time.Second,
+		timeout: config.ServerConfig.Timeout,
 	}
 }
 
@@ -50,7 +51,7 @@ func (h *Handlers) RegisterUser(ctx context.Context, res http.ResponseWriter, re
 	}
 
 	if user.GenerateHash() != nil {
-		http.Error(res, errors.New("error occured when generating password").Error(), http.StatusInternalServerError)
+		http.Error(res, errors.New("error occurred when generating password").Error(), http.StatusInternalServerError)
 		return
 	}
 
