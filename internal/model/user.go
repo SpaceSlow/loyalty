@@ -2,7 +2,7 @@ package model
 
 import (
 	"crypto/rand"
-	"crypto/sha512"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	PBKDF2SHA512Alg     = "pbkdf2-sha512"
+	PBKDF2SHA256Alg     = "pbkdf2-sha256"
 	PBKDF2KeyIterations = 500000
 )
 
@@ -31,10 +31,10 @@ func (u *User) GenerateHash() error {
 	}
 	u.PasswordHash = fmt.Sprintf(
 		"%s$%s$%v$%s",
-		PBKDF2SHA512Alg,
+		PBKDF2SHA256Alg,
 		base64.StdEncoding.EncodeToString(salt),
 		PBKDF2KeyIterations,
-		base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(u.Password), salt, PBKDF2KeyIterations, 32, sha512.New)),
+		base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(u.Password), salt, PBKDF2KeyIterations, 32, sha256.New)),
 	)
 
 	return nil
@@ -48,7 +48,7 @@ func (u *User) CheckPassword(passwordHash string) (bool, error) {
 	}
 	alg := fields[0]
 	switch alg {
-	case PBKDF2SHA512Alg:
+	case PBKDF2SHA256Alg:
 	default:
 		return false, errors.New("unknown password hash algorithm")
 	}
@@ -61,7 +61,7 @@ func (u *User) CheckPassword(passwordHash string) (bool, error) {
 		return false, err
 	}
 	storedHash := fields[3]
-	calculateHash := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(u.Password), salt, iterationNumber, 32, sha512.New))
+	calculateHash := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(u.Password), salt, iterationNumber, 32, sha256.New))
 
 	return calculateHash == storedHash, nil
 }
