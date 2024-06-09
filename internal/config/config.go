@@ -12,6 +12,7 @@ var ServerConfig *Config
 type Config struct {
 	DSN               string `env:"DATABASE_URI"`
 	SecretKey         string `env:"SECRET_KEY"`
+	Timeout           time.Duration
 	PasswordIteration int
 	TokenExpiredAt    time.Duration
 }
@@ -35,6 +36,7 @@ func GetConfigWithFlags() (*Config, error) {
 		cfg.SecretKey = flagSecretKey
 	}
 
+	cfg.Timeout = 3 * time.Second
 	cfg.PasswordIteration = 500000
 	cfg.TokenExpiredAt = time.Hour
 
