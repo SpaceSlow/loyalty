@@ -21,7 +21,7 @@ type Handlers struct {
 func NewHandlers(s *store.DB) *Handlers {
 	return &Handlers{
 		store:   s,
-		timeout: config.ServerConfig.Timeout,
+		timeout: config.ServerConfig.TimeoutOperation,
 	}
 }
 

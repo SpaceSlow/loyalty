@@ -14,7 +14,7 @@ type Config struct {
 	SecretKey             string `env:"SECRET_KEY"`
 	PasswordIteration     int
 	TokenExpiredAt        time.Duration
-	Timeout               time.Duration
+	TimeoutOperation      time.Duration
 	TimeoutServerShutdown time.Duration
 }
 
@@ -37,7 +37,7 @@ func GetConfigWithFlags() (*Config, error) {
 		cfg.SecretKey = flagSecretKey
 	}
 
-	cfg.Timeout = 3 * time.Second
+	cfg.TimeoutOperation = 3 * time.Second
 	cfg.PasswordIteration = 500000
 	cfg.TokenExpiredAt = time.Hour
 	cfg.TimeoutServerShutdown = 10 * time.Second
