@@ -9,13 +9,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/SpaceSlow/loyalty/internal/config"
 	"golang.org/x/crypto/pbkdf2"
 )
 
-const (
-	PBKDF2SHA256Alg     = "pbkdf2-sha256"
-	PBKDF2KeyIterations = 500000
-)
+const PBKDF2SHA256Alg = "pbkdf2-sha256"
 
 type User struct {
 	Username     string `json:"login"`
@@ -29,12 +27,13 @@ func (u *User) GenerateHash() error {
 	if err != nil {
 		return err
 	}
+	pbkdf2key := pbkdf2.Key([]byte(u.Password), salt, config.ServerConfig.PasswordIteration, 32, sha256.New)
 	u.PasswordHash = fmt.Sprintf(
 		"%s$%s$%v$%s",
 		PBKDF2SHA256Alg,
 		base64.StdEncoding.EncodeToString(salt),
-		PBKDF2KeyIterations,
-		base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(u.Password), salt, PBKDF2KeyIterations, 32, sha256.New)),
+		config.ServerConfig.PasswordIteration,
+		base64.StdEncoding.EncodeToString(pbkdf2key),
 	)
 
 	return nil
