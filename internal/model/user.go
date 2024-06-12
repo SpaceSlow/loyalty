@@ -27,12 +27,12 @@ func (u *User) GenerateHash() error {
 	if err != nil {
 		return err
 	}
-	pbkdf2key := pbkdf2.Key([]byte(u.Password), salt, config.ServerConfig.PasswordIteration, 32, sha256.New)
+	pbkdf2key := pbkdf2.Key([]byte(u.Password), salt, config.ServerConfig.PasswordIterationsNum, 32, sha256.New)
 	u.PasswordHash = fmt.Sprintf(
 		"%s$%s$%v$%s",
 		PBKDF2SHA256Alg,
 		base64.StdEncoding.EncodeToString(salt),
-		config.ServerConfig.PasswordIteration,
+		config.ServerConfig.PasswordIterationsNum,
 		base64.StdEncoding.EncodeToString(pbkdf2key),
 	)
 
