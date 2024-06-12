@@ -124,7 +124,12 @@ func (h *Handlers) LoginUser(ctx context.Context, res http.ResponseWriter, req *
 func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	userID := middleware.GetUserID(ctx)
 	orderNumber, err := getOrderNumber(req.Body)
-	if err != nil { // TODO check Luhn algorithm (https://ru.wikipedia.org/wiki/Алгоритм_Луна)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !isValidLuhnAlgorithm(orderNumber) {
 		http.Error(res, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
@@ -143,5 +148,8 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWri
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// go CalculateAccrual(orderNumber) #TODO реализовать начисление баллов лояльности через внешнюю систему
+
 	res.WriteHeader(http.StatusAccepted)
 }

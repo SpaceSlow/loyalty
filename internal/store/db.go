@@ -111,7 +111,7 @@ func (db *DB) GetUserID(ctx context.Context, username string) (int, error) {
 func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber int) error {
 	row := db.pool.QueryRow(
 		ctx,
-		"SELECT user_id FROM loyalty_operations WHERE order_number=$1",
+		"SELECT user_id FROM accruals WHERE order_number=$1",
 		orderNumber,
 	)
 
@@ -123,7 +123,7 @@ func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber i
 
 	_, err = db.pool.Exec(
 		ctx,
-		`INSERT INTO loyalty_operations (user_id, order_number) VALUES ($1, $2)`,
+		`INSERT INTO accruals (user_id, order_number) VALUES ($1, $2)`,
 		userID, orderNumber,
 	)
 	return err
