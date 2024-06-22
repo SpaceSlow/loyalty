@@ -129,6 +129,38 @@ func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber i
 	return err
 }
 
+func (db *DB) GetUnprocessedOrderAccruals(ctx context.Context) ([]int, error) {
+	rows, err := db.pool.Query(
+		ctx,
+		"SELECT order_number FROM accruals WHERE status=$1", // TODO on view
+		"PROCESSING",
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	orders := make([]int, 0)
+	for rows.Next() {
+		var orderNumber int
+		err := rows.Scan(&orderNumber)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, orderNumber)
+	}
+	return orders, nil
+}
+
+func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.AccrualInfo) error {
+	_, err := db.pool.Exec(
+		ctx,
+		`UPDATE accruals SET status=$1, sum=$2 WHERE order_number=$3`,
+		accrualInfo.Status, accrualInfo.Sum, accrualInfo.OrderNumber,
+	)
+	return err
+}
+
 func (db *DB) Close() {
 	db.pool.Close()
 }

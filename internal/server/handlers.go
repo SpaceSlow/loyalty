@@ -130,7 +130,7 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWri
 	}
 
 	if !isValidLuhnAlgorithm(orderNumber) {
-		http.Error(res, err.Error(), http.StatusUnprocessableEntity)
+		http.Error(res, (&ErrInvalidOrderNumber{orderNumber: orderNumber}).Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWri
 		return
 	}
 
-	// go CalculateAccrual(orderNumber) #TODO реализовать начисление баллов лояльности через внешнюю систему
+	go CalculateAccrual(ctx, h.store, orderNumber)
 
 	res.WriteHeader(http.StatusAccepted)
 }
