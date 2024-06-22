@@ -68,13 +68,14 @@ func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber int) {
 			case http.StatusOK:
 				data, err := io.ReadAll(res.Body)
 				if err != nil {
-					continue // TODO log error
+					slog.Error("error occurring reading data from response body:", err.Error())
+					continue
 				}
 				var accrualInfo model.AccrualInfo
 				err = json.Unmarshal(data, &accrualInfo)
 				if err != nil {
 					slog.Error("error occurring unmarshall data from accrual-service:", err.Error())
-					continue // TODO log error
+					continue
 				}
 				switch accrualInfo.Status {
 				case "REGISTERED", "PROCESSING":
@@ -92,8 +93,7 @@ func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber int) {
 			case http.StatusTooManyRequests:
 				<-time.After(60 * time.Second)
 			case http.StatusNoContent:
-				break
-				// TODO уточнить как обрабатывать
+				break // TODO уточнить как обрабатывать
 			}
 		}
 	}

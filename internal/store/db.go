@@ -132,8 +132,7 @@ func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber i
 func (db *DB) GetUnprocessedOrderAccruals(ctx context.Context) ([]int, error) {
 	rows, err := db.pool.Query(
 		ctx,
-		"SELECT order_number FROM accruals WHERE status=$1", // TODO on view
-		"PROCESSING",
+		"SELECT order_number FROM unprocessed_orders_view",
 	)
 
 	if err != nil {

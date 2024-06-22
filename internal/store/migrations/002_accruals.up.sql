@@ -11,4 +11,4 @@ CREATE TABLE accruals(
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
--- CREATE VIEW // TODO view select unprocessed order number
+CREATE VIEW unprocessed_orders_view AS SELECT order_number FROM accruals WHERE status='PROCESSING';
