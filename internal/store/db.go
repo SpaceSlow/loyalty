@@ -130,10 +130,7 @@ func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber i
 }
 
 func (db *DB) GetUnprocessedOrderAccruals(ctx context.Context) ([]int, error) {
-	rows, err := db.pool.Query(
-		ctx,
-		"SELECT order_number FROM unprocessed_orders_view",
-	)
+	rows, err := db.pool.Query(ctx, "SELECT order_number FROM unprocessed_orders_view")
 
 	if err != nil {
 		return nil, err
