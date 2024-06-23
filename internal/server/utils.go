@@ -52,7 +52,8 @@ func reverseNumber(number int) int {
 func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber int) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
-	responseCh := make(chan *http.Response)
+	responseCh := make(chan response)
+	errorCh := make(chan error)
 out:
 	for {
 		select {
@@ -62,18 +63,15 @@ out:
 			go func() {
 				ctx, cancel := context.WithTimeout(ctx, config.ServerConfig.TimeoutOperation)
 				defer cancel()
-				getLoyaltyOrderInfo(ctx, responseCh, orderNumber)
+				getLoyaltyOrderInfo(ctx, responseCh, errorCh, orderNumber)
 			}()
+		case err := <-errorCh:
+			slog.Error("error occurring when making a request to an external service:", err.Error())
 		case res := <-responseCh:
-			switch res.StatusCode {
+			switch res.statusCode {
 			case http.StatusOK:
-				data, err := io.ReadAll(res.Body)
-				if err != nil {
-					slog.Error("error occurring reading data from response body:", err.Error())
-					continue
-				}
 				var accrualInfo model.AccrualInfo
-				err = json.Unmarshal(data, &accrualInfo)
+				err := json.Unmarshal(res.data, &accrualInfo)
 				if err != nil {
 					slog.Error("error occurring unmarshall data from accrual-service:", err.Error())
 					continue
@@ -101,7 +99,12 @@ out:
 
 }
 
-func getLoyaltyOrderInfo(ctx context.Context, responseCh chan *http.Response, orderNumber int) {
+type response struct {
+	statusCode int
+	data       []byte
+}
+
+func getLoyaltyOrderInfo(ctx context.Context, responseCh chan response, errorCh chan error, orderNumber int) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -109,11 +112,19 @@ func getLoyaltyOrderInfo(ctx context.Context, responseCh chan *http.Response, or
 		nil,
 	)
 	if err != nil {
+		errorCh <- err
 		return
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
+		errorCh <- err
 		return
 	}
-	responseCh <- res
+	data, err := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	responseCh <- response{res.StatusCode, data}
 }
