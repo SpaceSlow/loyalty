@@ -3,14 +3,15 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/SpaceSlow/loyalty/internal/config"
-	"github.com/SpaceSlow/loyalty/internal/model"
-	"github.com/SpaceSlow/loyalty/internal/store"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/SpaceSlow/loyalty/internal/config"
+	"github.com/SpaceSlow/loyalty/internal/model"
+	"github.com/SpaceSlow/loyalty/internal/store"
 )
 
 func getOrderNumber(body io.ReadCloser) (int, error) {
