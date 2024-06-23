@@ -47,6 +47,18 @@ func RunServer() error {
 		return nil
 	})
 
+	g.Go(func() error {
+		orderNumbers, err := db.GetUnprocessedOrderAccruals(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, orderNumber := range orderNumbers {
+			go CalculateAccrual(ctx, db, orderNumber)
+		}
+		return nil
+	})
+
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: Router(db),

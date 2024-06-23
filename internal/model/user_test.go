@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func FuzzUser_GenerateHash(f *testing.F) {
+func FuzzUserGenerateHash(f *testing.F) {
 	f.Fuzz(func(t *testing.T, username, password string) {
 		u := &User{
 			Username:     username,
