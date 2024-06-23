@@ -52,8 +52,8 @@ func RunServer() error {
 		if err != nil {
 			return err
 		}
-		
-		for orderNumber := range orderNumbers {
+
+		for _, orderNumber := range orderNumbers {
 			go CalculateAccrual(ctx, db, orderNumber)
 		}
 		return nil

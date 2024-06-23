@@ -157,6 +157,29 @@ func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.AccrualIn
 	return err
 }
 
+func (db *DB) GetUserAccruals(ctx context.Context, userID int) ([]model.AccrualInfo, error) {
+	rows, err := db.pool.Query(
+		ctx,
+		"SELECT order_number, status, sum, created_at FROM accruals WHERE user_id=$1",
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	accruals := make([]model.AccrualInfo, 0)
+	for rows.Next() {
+		var a model.AccrualInfo
+		err := rows.Scan(&a.OrderNumber, &a.Status, &a.Sum, &a.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		accruals = append(accruals, a)
+	}
+	return accruals, nil
+}
+
 func (db *DB) Close() {
 	db.pool.Close()
 }

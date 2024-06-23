@@ -50,14 +50,15 @@ func reverseNumber(number int) int {
 }
 
 func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber int) {
-	timer := time.NewTimer(2 * time.Second)
-	defer timer.Stop()
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
 	responseCh := make(chan *http.Response)
+out:
 	for {
 		select {
 		case <-ctx.Done():
-			break
-		case <-timer.C:
+			break out
+		case <-ticker.C:
 			go func() {
 				ctx, cancel := context.WithTimeout(ctx, config.ServerConfig.TimeoutOperation)
 				defer cancel()
@@ -88,12 +89,12 @@ func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber int) {
 						slog.Error("error occurring in updating accrual in DB:", err.Error(), accrualInfo)
 						continue
 					}
-					break
+					break out
 				}
 			case http.StatusTooManyRequests:
 				<-time.After(60 * time.Second)
 			case http.StatusNoContent:
-				break // TODO уточнить как обрабатывать
+				break out // TODO уточнить как обрабатывать
 			}
 		}
 	}

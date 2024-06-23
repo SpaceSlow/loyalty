@@ -149,7 +149,31 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWri
 		return
 	}
 
-	go CalculateAccrual(ctx, h.store, orderNumber)
+	go CalculateAccrual(context.Background(), h.store, orderNumber)
 
 	res.WriteHeader(http.StatusAccepted)
+}
+
+func (h *Handlers) GetAccrualInfos(ctx context.Context, res http.ResponseWriter, _ *http.Request) {
+	userID := middleware.GetUserID(ctx)
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	accruals, err := h.store.GetUserAccruals(timeoutCtx, userID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(accruals) == 0 {
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+	data, err := json.Marshal(accruals)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	res.Write(data)
 }
