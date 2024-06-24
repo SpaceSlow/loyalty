@@ -1,9 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,12 +30,14 @@ func NewHandlers(s *store.DB) *Handlers {
 
 func (h *Handlers) RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &model.User{}
-	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := r.Body.Close(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	defer r.Body.Close()
+	if err := json.Unmarshal(data, user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -64,8 +68,9 @@ func (h *Handlers) RegisterUser(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	rb := bytes.NewReader(data)
+	r.Body = io.NopCloser(rb)
+	h.LoginUser(ctx, w, r)
 }
 
 func (h *Handlers) LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -137,7 +142,7 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, w http.ResponseWrite
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
-	err = h.store.RegisterOrderNumber(timeoutCtx, userID, orderNumber)
+	err = h.store.RegisterOrderNumber(timeoutCtx, userID, strconv.Itoa(orderNumber))
 	var errOrderAlreadyExist *store.ErrOrderAlreadyExist
 	if err != nil && errors.As(err, &errOrderAlreadyExist) && errOrderAlreadyExist.UserID == userID {
 		w.WriteHeader(http.StatusOK)
@@ -150,7 +155,7 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, w http.ResponseWrite
 		return
 	}
 
-	go CalculateAccrual(context.Background(), h.store, orderNumber)
+	go CalculateAccrual(context.Background(), h.store, strconv.Itoa(orderNumber))
 
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -203,7 +208,7 @@ func (h *Handlers) GetBalance(ctx context.Context, w http.ResponseWriter, _ *htt
 func (h *Handlers) WithdrawLoyaltyPoints(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(ctx)
 
-	withdrawal := &model.WithdrawalInfo{}
+	withdrawal := &model.Withdrawal{}
 	if err := json.NewDecoder(r.Body).Decode(withdrawal); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
