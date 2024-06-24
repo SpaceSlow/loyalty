@@ -10,7 +10,9 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -157,7 +159,7 @@ func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.AccrualIn
 	return err
 }
 
-func (db *DB) GetUserAccruals(ctx context.Context, userID int) ([]model.AccrualInfo, error) {
+func (db *DB) GetAccruals(ctx context.Context, userID int) ([]model.AccrualInfo, error) {
 	rows, err := db.pool.Query(
 		ctx,
 		"SELECT order_number, status, sum, created_at FROM accruals WHERE user_id=$1",
@@ -194,6 +196,42 @@ func (db *DB) GetBalance(ctx context.Context, userID int) (*model.Balance, error
 	}
 
 	return &b, err
+}
+
+func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.WithdrawalInfo) error {
+	_, err := db.pool.Exec(
+		ctx,
+		`INSERT INTO withdrawals (user_id, order_number, sum) VALUES ($1, $2, $3)`,
+		userID, withdrawal.OrderNumber, withdrawal.Sum,
+	)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return &ErrWithdrawalAlreadyExist{Order: withdrawal.OrderNumber}
+	}
+	return err
+}
+
+func (db *DB) GetWithdrawals(ctx context.Context, userID int) ([]model.WithdrawalInfo, error) {
+	rows, err := db.pool.Query(
+		ctx,
+		"SELECT order_number, sum, created_at FROM withdrawals WHERE user_id=$1",
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	withdrawals := make([]model.WithdrawalInfo, 0)
+	for rows.Next() {
+		var a model.WithdrawalInfo
+		err := rows.Scan(&a.OrderNumber, &a.Sum, &a.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		withdrawals = append(withdrawals, a)
+	}
+	return withdrawals, nil
 }
 
 func (db *DB) Close() {

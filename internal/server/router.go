@@ -29,6 +29,12 @@ func Router(storage *store.DB) chi.Router {
 		r.Get("/api/user/balance", middleware.WithAuthentication(func(w http.ResponseWriter, r *http.Request) {
 			h.GetBalance(r.Context(), w, r)
 		}))
+		r.Post("/api/user/balance/withdraw", middleware.WithAuthentication(func(w http.ResponseWriter, r *http.Request) {
+			h.WithdrawLoyaltyPoints(r.Context(), w, r)
+		}))
+		r.Get("/api/user/withdrawals", middleware.WithAuthentication(func(w http.ResponseWriter, r *http.Request) {
+			h.GetWithdrawals(r.Context(), w, r)
+		}))
 	})
 
 	return r

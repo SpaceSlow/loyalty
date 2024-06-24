@@ -17,3 +17,11 @@ type ErrOrderAlreadyExist struct {
 func (e *ErrOrderAlreadyExist) Error() string {
 	return fmt.Sprintf("order has been already added user (user_id = %d)", e.UserID)
 }
+
+type ErrWithdrawalAlreadyExist struct {
+	Order string
+}
+
+func (e *ErrWithdrawalAlreadyExist) Error() string {
+	return fmt.Sprintf("withdrawal with order (%s) has been already exist", e.Order)
+}
