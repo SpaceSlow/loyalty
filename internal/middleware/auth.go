@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SpaceSlow/loyalty/internal/config"
 	"github.com/golang-jwt/jwt/v4"
+
+	"github.com/SpaceSlow/loyalty/internal/config"
 )
 
 type Claims struct {

@@ -25,11 +25,10 @@ func getOrderNumber(body io.ReadCloser) (int, error) {
 
 func isValidLuhnAlgorithm(number int) bool {
 	sum := 0
-	number = reverseNumber(number)
 
-	for isOdd := 1; number > 0; isOdd ^= 1 {
+	for isEven := 1; number > 0; isEven ^= 1 {
 		digit := number % 10
-		if isOdd == 1 {
+		if isEven == 0 {
 			digit = digit * 2
 			if digit > 9 {
 				digit -= 9
@@ -42,15 +41,7 @@ func isValidLuhnAlgorithm(number int) bool {
 	return sum%10 == 0
 }
 
-func reverseNumber(number int) int {
-	reversed := 0
-	for ; number > 0; number /= 10 {
-		reversed = reversed*10 + number%10
-	}
-	return reversed
-}
-
-func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber int) {
+func CalculateAccrual(ctx context.Context, db *store.DB, orderNumber string) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	responseCh := make(chan response)
@@ -67,25 +58,25 @@ out:
 				getLoyaltyOrderInfo(ctx, responseCh, errorCh, orderNumber)
 			}()
 		case err := <-errorCh:
-			slog.Error("error occurring when making a request to an external service:", err.Error())
+			slog.Error("error occurring when making a request to an external service:", slog.Any("err", err.Error()))
 		case res := <-responseCh:
 			switch res.statusCode {
 			case http.StatusOK:
-				var accrualInfo model.AccrualInfo
-				err := json.Unmarshal(res.data, &accrualInfo)
+				var accrual model.ExternalAccrual
+				err := json.Unmarshal(res.data, &accrual)
 				if err != nil {
-					slog.Error("error occurring unmarshall data from accrual-service:", err.Error())
+					slog.Error("error occurring unmarshall data from accrual-service:", slog.Any("err", err.Error()))
 					continue
 				}
-				switch accrualInfo.Status {
+				switch accrual.Status {
 				case "REGISTERED", "PROCESSING":
 					continue
 				case "PROCESSED", "INVALID":
 					ctx, cancel := context.WithTimeout(ctx, config.ServerConfig.TimeoutOperation)
 					defer cancel()
-					err := db.UpdateAccrualInfo(ctx, accrualInfo)
+					err := db.UpdateAccrualInfo(ctx, accrual)
 					if err != nil {
-						slog.Error("error occurring in updating accrual in DB:", err.Error(), accrualInfo)
+						slog.Error("error occurring in updating accrual in DB:", err.Error(), accrual)
 						continue
 					}
 					break out
@@ -105,11 +96,11 @@ type response struct {
 	data       []byte
 }
 
-func getLoyaltyOrderInfo(ctx context.Context, responseCh chan response, errorCh chan error, orderNumber int) {
+func getLoyaltyOrderInfo(ctx context.Context, responseCh chan response, errorCh chan error, orderNumber string) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		config.ServerConfig.AccrualSystemAddress+"/api/orders/"+strconv.Itoa(orderNumber),
+		config.ServerConfig.AccrualSystemAddress+"/api/orders/"+orderNumber,
 		nil,
 	)
 	if err != nil {

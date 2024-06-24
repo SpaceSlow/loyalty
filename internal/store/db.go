@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -14,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/SpaceSlow/loyalty/internal/model"
 )
 
 type DB struct {
@@ -110,7 +111,7 @@ func (db *DB) GetUserID(ctx context.Context, username string) (int, error) {
 	return userID, nil
 }
 
-func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber int) error {
+func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber string) error {
 	row := db.pool.QueryRow(
 		ctx,
 		"SELECT user_id FROM accruals WHERE order_number=$1",
@@ -131,16 +132,16 @@ func (db *DB) RegisterOrderNumber(ctx context.Context, userID int, orderNumber i
 	return err
 }
 
-func (db *DB) GetUnprocessedOrderAccruals(ctx context.Context) ([]int, error) {
+func (db *DB) GetUnprocessedOrderAccruals(ctx context.Context) ([]string, error) {
 	rows, err := db.pool.Query(ctx, "SELECT order_number FROM unprocessed_orders_view")
 
 	if err != nil {
 		return nil, err
 	}
 
-	orders := make([]int, 0)
+	orders := make([]string, 0)
 	for rows.Next() {
-		var orderNumber int
+		var orderNumber string
 		err := rows.Scan(&orderNumber)
 		if err != nil {
 			return nil, err
@@ -150,7 +151,7 @@ func (db *DB) GetUnprocessedOrderAccruals(ctx context.Context) ([]int, error) {
 	return orders, nil
 }
 
-func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.AccrualInfo) error {
+func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.ExternalAccrual) error {
 	_, err := db.pool.Exec(
 		ctx,
 		`UPDATE accruals SET status=$1, sum=$2 WHERE order_number=$3`,
@@ -159,7 +160,7 @@ func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.AccrualIn
 	return err
 }
 
-func (db *DB) GetAccruals(ctx context.Context, userID int) ([]model.AccrualInfo, error) {
+func (db *DB) GetAccruals(ctx context.Context, userID int) ([]model.Accrual, error) {
 	rows, err := db.pool.Query(
 		ctx,
 		"SELECT order_number, status, sum, created_at FROM accruals WHERE user_id=$1",
@@ -170,9 +171,9 @@ func (db *DB) GetAccruals(ctx context.Context, userID int) ([]model.AccrualInfo,
 		return nil, err
 	}
 
-	accruals := make([]model.AccrualInfo, 0)
+	accruals := make([]model.Accrual, 0)
 	for rows.Next() {
-		var a model.AccrualInfo
+		var a model.Accrual
 		err := rows.Scan(&a.OrderNumber, &a.Status, &a.Sum, &a.CreatedAt)
 		if err != nil {
 			return nil, err
@@ -198,7 +199,7 @@ func (db *DB) GetBalance(ctx context.Context, userID int) (*model.Balance, error
 	return &b, err
 }
 
-func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.WithdrawalInfo) error {
+func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.Withdrawal) error {
 	_, err := db.pool.Exec(
 		ctx,
 		`INSERT INTO withdrawals (user_id, order_number, sum) VALUES ($1, $2, $3)`,
@@ -211,7 +212,7 @@ func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.W
 	return err
 }
 
-func (db *DB) GetWithdrawals(ctx context.Context, userID int) ([]model.WithdrawalInfo, error) {
+func (db *DB) GetWithdrawals(ctx context.Context, userID int) ([]model.Withdrawal, error) {
 	rows, err := db.pool.Query(
 		ctx,
 		"SELECT order_number, sum, created_at FROM withdrawals WHERE user_id=$1",
@@ -222,9 +223,9 @@ func (db *DB) GetWithdrawals(ctx context.Context, userID int) ([]model.Withdrawa
 		return nil, err
 	}
 
-	withdrawals := make([]model.WithdrawalInfo, 0)
+	withdrawals := make([]model.Withdrawal, 0)
 	for rows.Next() {
-		var a model.WithdrawalInfo
+		var a model.Withdrawal
 		err := rows.Scan(&a.OrderNumber, &a.Sum, &a.CreatedAt)
 		if err != nil {
 			return nil, err
