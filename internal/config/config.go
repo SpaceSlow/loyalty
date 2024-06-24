@@ -10,9 +10,10 @@ import (
 var ServerConfig *Config
 
 type Config struct {
-	DSN                   string `env:"DATABASE_URI"`
-	SecretKey             string `env:"SECRET_KEY"`
-	AccrualSystemAddress  string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	ServerAddr            NetAddress `env:"ADDRESS"`
+	DSN                   string     `env:"DATABASE_URI"`
+	SecretKey             string     `env:"SECRET_KEY"`
+	AccrualSystemAddress  string     `env:"ACCRUAL_SYSTEM_ADDRESS"`
 	PasswordIterationsNum int
 	TokenExpiredAt        time.Duration
 	TimeoutOperation      time.Duration
@@ -25,6 +26,10 @@ func GetConfigWithFlags() (*Config, error) {
 
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
+	}
+
+	if cfg.ServerAddr.String() == "" {
+		cfg.ServerAddr = flagServerAddr
 	}
 
 	if cfg.DSN == "" {
