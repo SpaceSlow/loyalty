@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -46,7 +45,7 @@ func getUserID(tokenString string) (int, error) {
 	}
 
 	if !token.Valid {
-		return -1, errors.New("token is not valid")
+		return -1, ErrInvalidToken
 	}
 
 	return claims.UserID, nil

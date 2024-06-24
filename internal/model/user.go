@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -43,13 +42,13 @@ func (u *User) CheckPassword(passwordHash string) (bool, error) {
 	fields := strings.Split(passwordHash, "$")
 
 	if len(fields) != 4 {
-		return false, errors.New("invalid password hash layout")
+		return false, ErrInvalidPasswordHash
 	}
 	alg := fields[0]
 	switch alg {
 	case PBKDF2SHA256Alg:
 	default:
-		return false, errors.New("unknown password hash algorithm")
+		return false, &ErrUnknownHashAlg{Alg: alg}
 	}
 	salt, err := base64.StdEncoding.DecodeString(fields[1])
 	if err != nil {

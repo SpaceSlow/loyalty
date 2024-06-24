@@ -1,6 +1,11 @@
 package server
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrGeneratePasswordHash = errors.New("error occurred when generating password")
 
 type ErrInvalidOrderNumber struct {
 	orderNumber int
