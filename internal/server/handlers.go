@@ -243,6 +243,11 @@ func (h *Handlers) WithdrawLoyaltyPoints(ctx context.Context, w http.ResponseWri
 	timeoutCtx, cancel = context.WithTimeout(ctx, h.timeout)
 	defer cancel()
 	err = h.store.AddWithdrawal(ctx, userID, withdrawal)
+	var errWithdrawalAlreadyExist *store.ErrWithdrawalAlreadyExist
+	if errors.As(err, &errWithdrawalAlreadyExist) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

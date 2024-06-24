@@ -5,11 +5,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+
 	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -201,6 +204,10 @@ func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.W
 		`INSERT INTO withdrawals (user_id, order_number, sum) VALUES ($1, $2, $3)`,
 		userID, withdrawal.OrderNumber, withdrawal.Sum,
 	)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return &ErrWithdrawalAlreadyExist{Order: withdrawal.OrderNumber}
+	}
 	return err
 }
 
