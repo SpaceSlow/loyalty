@@ -52,7 +52,7 @@ func (h *Handlers) RegisterUser(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	if user.GenerateHash() != nil {
-		http.Error(w, errors.New("error occurred when generating password").Error(), http.StatusInternalServerError)
+		http.Error(w, ErrGeneratePasswordHash.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *Handlers) WithdrawLoyaltyPoints(ctx context.Context, w http.ResponseWri
 
 	timeoutCtx, cancel = context.WithTimeout(ctx, h.timeout)
 	defer cancel()
-	err = h.store.AddWithdrawal(ctx, userID, withdrawal)
+	err = h.store.AddWithdrawal(timeoutCtx, userID, withdrawal)
 	var errWithdrawalAlreadyExist *store.ErrWithdrawalAlreadyExist
 	if errors.As(err, &errWithdrawalAlreadyExist) {
 		http.Error(w, err.Error(), http.StatusConflict)

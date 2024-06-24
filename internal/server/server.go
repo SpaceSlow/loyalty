@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/SpaceSlow/loyalty/internal/config"
-	"github.com/SpaceSlow/loyalty/internal/store"
-	"golang.org/x/sync/errgroup"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+
+	"github.com/SpaceSlow/loyalty/internal/config"
+	"github.com/SpaceSlow/loyalty/internal/store"
+	"golang.org/x/sync/errgroup"
 )
 
 func RunServer() error {
@@ -60,7 +61,7 @@ func RunServer() error {
 	})
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    config.ServerConfig.ServerAddr.String(),
 		Handler: Router(db),
 	}
 

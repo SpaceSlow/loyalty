@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -10,9 +9,10 @@ import (
 var ServerConfig *Config
 
 type Config struct {
-	DSN                   string `env:"DATABASE_URI"`
-	SecretKey             string `env:"SECRET_KEY"`
-	AccrualSystemAddress  string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	ServerAddr            NetAddress `env:"ADDRESS"`
+	DSN                   string     `env:"DATABASE_URI"`
+	SecretKey             string     `env:"SECRET_KEY"`
+	AccrualSystemAddress  string     `env:"ACCRUAL_SYSTEM_ADDRESS"`
 	PasswordIterationsNum int
 	TokenExpiredAt        time.Duration
 	TimeoutOperation      time.Duration
@@ -27,9 +27,13 @@ func GetConfigWithFlags() (*Config, error) {
 		return nil, err
 	}
 
+	if cfg.ServerAddr.String() == "" {
+		cfg.ServerAddr = flagServerAddr
+	}
+
 	if cfg.DSN == "" {
 		if flagDSN == "" {
-			return nil, errors.New("flag error: needed DSN. check specification")
+			return nil, ErrEmptyDSN
 		}
 		cfg.DSN = flagDSN
 	}
@@ -40,7 +44,7 @@ func GetConfigWithFlags() (*Config, error) {
 
 	if cfg.AccrualSystemAddress == "" {
 		if flagAccrualSystemAddress == "" {
-			return nil, errors.New("flag error: needed accrual system address. check specification")
+			return nil, ErrEmptyAccrualAddress
 		}
 		cfg.AccrualSystemAddress = flagAccrualSystemAddress
 	}
