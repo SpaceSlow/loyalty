@@ -177,3 +177,24 @@ func (h *Handlers) GetAccrualInfos(ctx context.Context, res http.ResponseWriter,
 	res.WriteHeader(http.StatusOK)
 	res.Write(data)
 }
+
+func (h *Handlers) GetBalance(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+	userID := middleware.GetUserID(ctx)
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	balance, err := h.store.GetBalance(timeoutCtx, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(balance)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
