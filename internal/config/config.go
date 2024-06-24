@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -34,7 +33,7 @@ func GetConfigWithFlags() (*Config, error) {
 
 	if cfg.DSN == "" {
 		if flagDSN == "" {
-			return nil, errors.New("flag error: needed DSN. check specification")
+			return nil, ErrEmptyDSN
 		}
 		cfg.DSN = flagDSN
 	}
@@ -45,7 +44,7 @@ func GetConfigWithFlags() (*Config, error) {
 
 	if cfg.AccrualSystemAddress == "" {
 		if flagAccrualSystemAddress == "" {
-			return nil, errors.New("flag error: needed accrual system address. check specification")
+			return nil, ErrEmptyAccrualAddress
 		}
 		cfg.AccrualSystemAddress = flagAccrualSystemAddress
 	}
