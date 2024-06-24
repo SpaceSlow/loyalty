@@ -5,7 +5,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-
 	"github.com/SpaceSlow/loyalty/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -157,7 +156,7 @@ func (db *DB) UpdateAccrualInfo(ctx context.Context, accrualInfo model.AccrualIn
 	return err
 }
 
-func (db *DB) GetUserAccruals(ctx context.Context, userID int) ([]model.AccrualInfo, error) {
+func (db *DB) GetAccruals(ctx context.Context, userID int) ([]model.AccrualInfo, error) {
 	rows, err := db.pool.Query(
 		ctx,
 		"SELECT order_number, status, sum, created_at FROM accruals WHERE user_id=$1",
@@ -203,6 +202,29 @@ func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.W
 		userID, withdrawal.OrderNumber, withdrawal.Sum,
 	)
 	return err
+}
+
+func (db *DB) GetWithdrawals(ctx context.Context, userID int) ([]model.WithdrawalInfo, error) {
+	rows, err := db.pool.Query(
+		ctx,
+		"SELECT order_number, sum, created_at FROM withdrawals WHERE user_id=$1",
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	withdrawals := make([]model.WithdrawalInfo, 0)
+	for rows.Next() {
+		var a model.WithdrawalInfo
+		err := rows.Scan(&a.OrderNumber, &a.Sum, &a.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		withdrawals = append(withdrawals, a)
+	}
+	return withdrawals, nil
 }
 
 func (db *DB) Close() {

@@ -160,7 +160,7 @@ func (h *Handlers) GetAccrualInfos(ctx context.Context, w http.ResponseWriter, _
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
-	accruals, err := h.store.GetUserAccruals(timeoutCtx, userID)
+	accruals, err := h.store.GetAccruals(timeoutCtx, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -248,4 +248,28 @@ func (h *Handlers) WithdrawLoyaltyPoints(ctx context.Context, w http.ResponseWri
 		return
 	}
 
+}
+
+func (h *Handlers) GetWithdrawals(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+	userID := middleware.GetUserID(ctx)
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	withdrawals, err := h.store.GetWithdrawals(timeoutCtx, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(withdrawals) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	data, err := json.Marshal(withdrawals)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
