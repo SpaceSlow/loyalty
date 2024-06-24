@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/SpaceSlow/loyalty/internal/config"
@@ -197,4 +198,54 @@ func (h *Handlers) GetBalance(ctx context.Context, w http.ResponseWriter, _ *htt
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
+}
+
+func (h *Handlers) WithdrawLoyaltyPoints(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(ctx)
+
+	withdrawal := &model.WithdrawalInfo{}
+	if err := json.NewDecoder(r.Body).Decode(withdrawal); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := r.Body.Close(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if withdrawal.Sum <= 0 {
+		http.Error(w, (&ErrIncorrectWithdrawalSum{sum: withdrawal.Sum}).Error(), http.StatusBadRequest)
+		return
+	}
+
+	orderNumber, err := strconv.Atoi(withdrawal.OrderNumber)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !isValidLuhnAlgorithm(orderNumber) {
+		http.Error(w, (&ErrInvalidOrderNumber{orderNumber: orderNumber}).Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	balance, err := h.store.GetBalance(timeoutCtx, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if withdrawal.Sum > balance.Current {
+		http.Error(w, (&ErrNotEnoughLoyaltyPoints{current: balance.Current}).Error(), http.StatusPaymentRequired)
+		return
+	}
+
+	timeoutCtx, cancel = context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	err = h.store.AddWithdrawal(ctx, userID, withdrawal)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }

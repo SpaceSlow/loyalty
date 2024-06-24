@@ -196,6 +196,15 @@ func (db *DB) GetBalance(ctx context.Context, userID int) (*model.Balance, error
 	return &b, err
 }
 
+func (db *DB) AddWithdrawal(ctx context.Context, userID int, withdrawal *model.WithdrawalInfo) error {
+	_, err := db.pool.Exec(
+		ctx,
+		`INSERT INTO withdrawals (user_id, order_number, sum) VALUES ($1, $2, $3)`,
+		userID, withdrawal.OrderNumber, withdrawal.Sum,
+	)
+	return err
+}
+
 func (db *DB) Close() {
 	db.pool.Close()
 }
