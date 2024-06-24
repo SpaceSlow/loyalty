@@ -1,0 +1,66 @@
+package model
+
+import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"golang.org/x/crypto/pbkdf2"
+
+	"github.com/SpaceSlow/loyalty/internal/config"
+)
+
+const PBKDF2SHA256Alg = "pbkdf2-sha256"
+
+type User struct {
+	Username     string `json:"login"`
+	Password     string `json:"password"`
+	PasswordHash string
+}
+
+func (u *User) GenerateHash() error {
+	salt := make([]byte, 32)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return err
+	}
+	pbkdf2key := pbkdf2.Key([]byte(u.Password), salt, config.ServerConfig.PasswordIterationsNum, 32, sha256.New)
+	u.PasswordHash = fmt.Sprintf(
+		"%s$%s$%v$%s",
+		PBKDF2SHA256Alg,
+		base64.StdEncoding.EncodeToString(salt),
+		config.ServerConfig.PasswordIterationsNum,
+		base64.StdEncoding.EncodeToString(pbkdf2key),
+	)
+
+	return nil
+}
+
+func (u *User) CheckPassword(passwordHash string) (bool, error) {
+	fields := strings.Split(passwordHash, "$")
+
+	if len(fields) != 4 {
+		return false, ErrInvalidPasswordHash
+	}
+	alg := fields[0]
+	switch alg {
+	case PBKDF2SHA256Alg:
+	default:
+		return false, &ErrUnknownHashAlg{Alg: alg}
+	}
+	salt, err := base64.StdEncoding.DecodeString(fields[1])
+	if err != nil {
+		return false, err
+	}
+	iterationNumber, err := strconv.Atoi(fields[2])
+	if err != nil {
+		return false, err
+	}
+	storedHash := fields[3]
+	calculateHash := base64.StdEncoding.EncodeToString(pbkdf2.Key([]byte(u.Password), salt, iterationNumber, 32, sha256.New))
+
+	return calculateHash == storedHash, nil
+}
