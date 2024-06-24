@@ -26,6 +26,9 @@ func Router(storage *store.DB) chi.Router {
 		r.Get("/api/user/orders", middleware.WithAuthentication(func(w http.ResponseWriter, r *http.Request) {
 			h.GetAccrualInfos(r.Context(), w, r)
 		}))
+		r.Get("/api/user/balance", middleware.WithAuthentication(func(w http.ResponseWriter, r *http.Request) {
+			h.GetBalance(r.Context(), w, r)
+		}))
 	})
 
 	return r

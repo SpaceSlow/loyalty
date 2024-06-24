@@ -180,6 +180,22 @@ func (db *DB) GetUserAccruals(ctx context.Context, userID int) ([]model.AccrualI
 	return accruals, nil
 }
 
+func (db *DB) GetBalance(ctx context.Context, userID int) (*model.Balance, error) {
+	row := db.pool.QueryRow(
+		ctx,
+		"SELECT current, withdrawn FROM balances WHERE user_id=$1",
+		userID,
+	)
+
+	var b model.Balance
+	err := row.Scan(&b.Current, &b.Withdrawn)
+	if err != nil {
+		return nil, err
+	}
+
+	return &b, err
+}
+
 func (db *DB) Close() {
 	db.pool.Close()
 }

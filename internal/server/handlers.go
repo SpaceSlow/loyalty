@@ -25,14 +25,14 @@ func NewHandlers(s *store.DB) *Handlers {
 	}
 }
 
-func (h *Handlers) RegisterUser(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) RegisterUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &model.User{}
-	if err := json.NewDecoder(req.Body).Decode(user); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := req.Body.Close(); err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+	if err := r.Body.Close(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -41,17 +41,17 @@ func (h *Handlers) RegisterUser(ctx context.Context, res http.ResponseWriter, re
 	exist, err := h.store.CheckUsername(timeoutCtx, user.Username)
 
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if exist {
-		res.WriteHeader(http.StatusConflict)
+		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
 	if user.GenerateHash() != nil {
-		http.Error(res, errors.New("error occurred when generating password").Error(), http.StatusInternalServerError)
+		http.Error(w, errors.New("error occurred when generating password").Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -59,22 +59,22 @@ func (h *Handlers) RegisterUser(ctx context.Context, res http.ResponseWriter, re
 	defer cancel()
 	err = h.store.RegisterUser(timeoutCtx, user)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handlers) LoginUser(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) LoginUser(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &model.User{}
-	if err := json.NewDecoder(req.Body).Decode(user); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := req.Body.Close(); err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+	if err := r.Body.Close(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -83,22 +83,22 @@ func (h *Handlers) LoginUser(ctx context.Context, res http.ResponseWriter, req *
 	passwordHash, err := h.store.GetPasswordHash(timeoutCtx, user.Username)
 	var errNoUser *store.ErrNoUser
 	if errors.As(err, &errNoUser) {
-		http.Error(res, errNoUser.Error(), http.StatusUnauthorized)
+		http.Error(w, errNoUser.Error(), http.StatusUnauthorized)
 		return
 	} else if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	check, err := user.CheckPassword(passwordHash)
 
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if !check {
-		res.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -106,31 +106,31 @@ func (h *Handlers) LoginUser(ctx context.Context, res http.ResponseWriter, req *
 	defer cancel()
 	userID, err := h.store.GetUserID(timeoutCtx, user.Username)
 	if errors.As(err, &errNoUser) {
-		http.Error(res, errNoUser.Error(), http.StatusUnauthorized)
+		http.Error(w, errNoUser.Error(), http.StatusUnauthorized)
 		return
 	} else if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	token, err := middleware.BuildJWTString(userID)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Set("Authorization", token)
-	res.WriteHeader(http.StatusOK)
+	w.Header().Set("Authorization", token)
+	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+func (h *Handlers) RegisterOrderNumber(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(ctx)
-	orderNumber, err := getOrderNumber(req.Body)
+	orderNumber, err := getOrderNumber(r.Body)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if !isValidLuhnAlgorithm(orderNumber) {
-		http.Error(res, (&ErrInvalidOrderNumber{orderNumber: orderNumber}).Error(), http.StatusUnprocessableEntity)
+		http.Error(w, (&ErrInvalidOrderNumber{orderNumber: orderNumber}).Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -139,41 +139,62 @@ func (h *Handlers) RegisterOrderNumber(ctx context.Context, res http.ResponseWri
 	err = h.store.RegisterOrderNumber(timeoutCtx, userID, orderNumber)
 	var errOrderAlreadyExist *store.ErrOrderAlreadyExist
 	if err != nil && errors.As(err, &errOrderAlreadyExist) && errOrderAlreadyExist.UserID == userID {
-		res.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 		return
 	} else if err != nil && errors.As(err, &errOrderAlreadyExist) && errOrderAlreadyExist.UserID != userID {
-		http.Error(res, err.Error(), http.StatusConflict)
+		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	} else if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	go CalculateAccrual(context.Background(), h.store, orderNumber)
 
-	res.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusAccepted)
 }
 
-func (h *Handlers) GetAccrualInfos(ctx context.Context, res http.ResponseWriter, _ *http.Request) {
+func (h *Handlers) GetAccrualInfos(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
 	userID := middleware.GetUserID(ctx)
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
 	defer cancel()
 	accruals, err := h.store.GetUserAccruals(timeoutCtx, userID)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(accruals) == 0 {
-		res.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	data, err := json.Marshal(accruals)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusOK)
-	res.Write(data)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
+func (h *Handlers) GetBalance(ctx context.Context, w http.ResponseWriter, _ *http.Request) {
+	userID := middleware.GetUserID(ctx)
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, h.timeout)
+	defer cancel()
+	balance, err := h.store.GetBalance(timeoutCtx, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(balance)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
