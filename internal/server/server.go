@@ -9,9 +9,10 @@ import (
 	"os"
 	"os/signal"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/SpaceSlow/loyalty/internal/config"
 	"github.com/SpaceSlow/loyalty/internal/store"
-	"golang.org/x/sync/errgroup"
 )
 
 func RunServer() error {

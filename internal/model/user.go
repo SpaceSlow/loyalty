@@ -8,8 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SpaceSlow/loyalty/internal/config"
 	"golang.org/x/crypto/pbkdf2"
+
+	"github.com/SpaceSlow/loyalty/internal/config"
 )
 
 const PBKDF2SHA256Alg = "pbkdf2-sha256"
